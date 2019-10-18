@@ -1,0 +1,9 @@
+{
+	"authors": [
+		"Abeo Anthony Anabila"
+	],
+	"copyright": "Copyright © 2019, Abeo Anthony Anabila",
+	"description": "An implementation of the JVM in D.",
+	"license": "MIT",
+	"name": "jayvee3m"
+}

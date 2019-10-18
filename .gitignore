@@ -1,0 +1,16 @@
+.dub/
+docs.json
+__dummy.html
+docs/
+/jayvee3m
+jayvee3m.so
+jayvee3m.dylib
+jayvee3m.dll
+jayvee3m.a
+jayvee3m.lib
+jayvee3m-test-*
+*.exe
+*.o
+*.obj
+*.lst
+Main.class
