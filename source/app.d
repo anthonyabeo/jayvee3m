@@ -1,7 +1,9 @@
-import std.stdio, std.file, std.variant, std.math, std.conv;
+import std.stdio, std.file, std.variant, std.math, std.conv,
+       std.typecons;
 
 
-alias CP_INFO = Algebraic!(MethodRef, Float, Long, Class, String, Double, FieldRef, UTF8);
+alias CP_INFO = Algebraic!(Method, Float, Long, Class, String, Double, 
+                           Field, UTF8, NameAndType, Integer, InterfaceMethod);
 
 void main()
 {
@@ -12,7 +14,9 @@ void main()
 	auto min_version = BE16(buffer[4 .. 6]);
 	auto maj_version = BE16(buffer[6 .. 8]);
 	auto const_pool_cnt = BE16(buffer[8 .. 10]);
-	build_const_pool(buffer, const_pool_cnt, 10);
+	auto data = build_const_pool(buffer, const_pool_cnt, 10);
+	writeln(data[0]);
+	writeln(data[1]);
 
 	writefln("%x", magic);
 	writefln("%x", min_version);
@@ -34,9 +38,9 @@ auto BE16(const ubyte[] data)
 	       data[1];
 }
 
-void build_const_pool(const ubyte[] buffer, size_t pool_cnt, size_t start) 
+Tuple!(CP_INFO[], size_t) build_const_pool(const ubyte[] buffer, size_t pool_cnt, size_t start) 
 {
-	CP_INFO[] pool = new CP_INFO[buffer.length];
+	CP_INFO[] pool = new CP_INFO[pool_cnt];
 
 	size_t i = start, next_index = 1;
 	while(next_index < pool_cnt)
@@ -45,11 +49,11 @@ void build_const_pool(const ubyte[] buffer, size_t pool_cnt, size_t start)
 		final switch(tag) 
 		{
 			case Constant.Methodref:
-				writeln("methodoligical");
+				// writeln("methodoligical");
 				size_t class_index = BE16(buffer[i+1 .. i+3]);
 				size_t name_type_index = BE16(buffer[i+3 .. i+5]);
 
-				pool[next_index] = CP_INFO(MethodRef(tag, class_index, name_type_index));
+				pool[next_index] = CP_INFO(Method(tag, class_index, name_type_index));
 
 				next_index += 1;
 				i += 5;
@@ -57,12 +61,12 @@ void build_const_pool(const ubyte[] buffer, size_t pool_cnt, size_t start)
 				break;
 
 			case Constant.Fieldref:
-				writeln("field you best");
+				// writeln("field you best");
 
 				immutable class_index = BE16(buffer[i+1 .. i+3]);
 				immutable name_type_index = BE16(buffer[i+3 .. i+5]);
 
-				pool[next_index] = CP_INFO(FieldRef(tag, class_index, name_type_index));
+				pool[next_index] = CP_INFO(Field(tag, class_index, name_type_index));
 
 				next_index += 1;
 				i += 5;
@@ -70,23 +74,31 @@ void build_const_pool(const ubyte[] buffer, size_t pool_cnt, size_t start)
 				break;
 			
 			case Constant.InterfaceMethodref:
-				writeln("interfacing methods");
+				// writeln("interfacing methods");
 				
+				immutable class_index = BE16(buffer[i+1 .. i+3]);
+				immutable name_type_index = BE16(buffer[i+3 .. i+5]);
+
+				pool[next_index] = CP_INFO(InterfaceMethod(tag, class_index, name_type_index));
+
 				next_index += 1;
 				i += 5;
 
 				break;
 
 			case Constant.Integer:
-				writeln("integral");
-				
+				// writeln("integral");
+
+				immutable bytes = BE32(buffer[i+1 .. i+5]);
+				pool[next_index] =  CP_INFO(Integer(tag, bytes));
+
 				next_index += 1;
 				i += 5;
 
 				break;
 
 			case Constant.Float:
-				writeln("floating away");
+				// writeln("floating away");
 				float value;
 				immutable bytes = BE32(buffer[i+1 .. i+5]);
 
@@ -117,7 +129,7 @@ void build_const_pool(const ubyte[] buffer, size_t pool_cnt, size_t start)
 				break;
 
 			case Constant.Long:
-				writeln("longing for love");
+				// writeln("longing for love");
 
 				immutable high_bytes = to!ulong(BE32(buffer[i+1 .. i+5]));
 				immutable low_bytes = to!ulong(BE32(buffer[i+5 .. i+9]));
@@ -125,7 +137,7 @@ void build_const_pool(const ubyte[] buffer, size_t pool_cnt, size_t start)
 				immutable bytes = (high_bytes << 32) + low_bytes;
 				pool[next_index] = CP_INFO(Long(tag, bytes));
 
-				writeln(bytes);
+				// writeln(bytes);
 
 				next_index += 2;
 				i += 9;
@@ -133,7 +145,7 @@ void build_const_pool(const ubyte[] buffer, size_t pool_cnt, size_t start)
 				break;
 
 			case Constant.Double:
-				writeln("doubling down");
+				// writeln("doubling down");
 
 				double value;
 				immutable high_bytes = to!long(BE32(buffer[i+1 .. i+5]));
@@ -161,7 +173,7 @@ void build_const_pool(const ubyte[] buffer, size_t pool_cnt, size_t start)
 				}
 
 				pool[next_index] = CP_INFO(Double(tag, value));
-				writeln(value);
+				// writeln(value);
 
 				next_index += 2;
 				i += 9;
@@ -169,7 +181,7 @@ void build_const_pool(const ubyte[] buffer, size_t pool_cnt, size_t start)
 				break;
 
 			case Constant.Klass:
-				writeln("classless cassidy");
+				// writeln("classless cassidy");
 
 				immutable name_index = BE16(buffer[i+1 .. i+3]);
 				pool[next_index] = CP_INFO(Class(tag, name_index));
@@ -180,11 +192,11 @@ void build_const_pool(const ubyte[] buffer, size_t pool_cnt, size_t start)
 				break;
 			
 			case Constant.String:
-				writeln("stringifying");
+				// writeln("stringifying");
 
 				immutable string_index = BE16(buffer[i+1 .. i+3]);
 				pool[next_index] = CP_INFO(String(tag, string_index));
-				writeln(string_index);
+				// writeln(string_index);
 
 				next_index += 1;
 				i += 3;
@@ -192,20 +204,26 @@ void build_const_pool(const ubyte[] buffer, size_t pool_cnt, size_t start)
 				break;
 
 			case Constant.NameAndType:
-				writeln("Name Type");
+				// writeln("Name Type");
+
+				immutable name_index = BE16(buffer[i+1 .. i+3]);
+				immutable descriptor_index = BE16(buffer[i+3 .. i+5]);
+
+				pool[next_index] =  CP_INFO(NameAndType(tag, name_index, descriptor_index));
 
 				next_index += 1;
 				i += 5;
+
 				break;
 
 			case Constant.Utf8:
-				writeln("UTF-8 for the win");
+				// writeln("UTF-8 for the win");
 
 				immutable len = BE16(buffer[i+1 .. i+3]);
 				immutable bytes = buffer[i+3 .. i+3+len].idup;
 
 				pool[next_index] = CP_INFO(UTF8(tag, len, bytes));
-				writeln(bytes);
+				// writeln(bytes);
 
 				next_index += 1;
 				i += (len+3);
@@ -213,6 +231,9 @@ void build_const_pool(const ubyte[] buffer, size_t pool_cnt, size_t start)
 				break;
 		}
 	}
+
+	pool = pool[0 .. pool_cnt];
+	return Tuple!(CP_INFO[], "const_pool", size_t, "start")(pool, i);
 }
 
 enum Constant : ubyte 
@@ -230,14 +251,14 @@ enum Constant : ubyte
 	Utf8 = 1
 }
 
-struct MethodRef 
+struct Method
 {
 	ubyte tag;
 	size_t class_index;
 	size_t name_type_index;
 }
 
-struct FieldRef
+struct Field
 {
 	ubyte tag;
 	size_t class_index;
@@ -279,4 +300,24 @@ struct UTF8
 	ubyte tag;
 	size_t len;
 	immutable ubyte[] value;
+}
+
+struct NameAndType
+{
+	ubyte tag;
+	size_t name_index;
+	size_t descriptor_index;
+}
+
+struct Integer
+{
+	ubyte tag;
+	int value;
+}
+
+struct InterfaceMethod
+{
+	ubyte tag;
+	size_t class_index;
+	size_t name_type_index;
 }
