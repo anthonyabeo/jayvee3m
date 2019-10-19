@@ -1,7 +1,7 @@
 import std.stdio, std.file, std.variant, std.math, std.conv;
 
 
-alias CP_INFO = Algebraic!(MethodRef, Float, Long);
+alias CP_INFO = Algebraic!(MethodRef, Float, Long, Class, String, Double);
 
 void main()
 {
@@ -54,8 +54,6 @@ void build_const_pool(const ubyte[] buffer)
 				next_index += 1;
 				i += 5;
 
-				// writeln(method_ref);
-				// writeln(pool);
 				break;
 
 			case Constant.Fieldref:
@@ -91,9 +89,13 @@ void build_const_pool(const ubyte[] buffer)
 					value = real.infinity;
 				else if(bytes == 0xff800000) 
 					value = -real.infinity;
-				else if(((bytes >= 0x7f800001) && (bytes <= 0x7fffffff)) || ((bytes >= 0xff800001) && (bytes <= 0xffffffff))) 
+				else if(((bytes >= 0x7f800001) && (bytes <= 0x7fffffff)) || 
+				        ((bytes >= 0xff800001) && (bytes <= 0xffffffff))) 
+				{
 					value = float.nan;
-				else {
+				}
+				else 
+				{
 					immutable s = ((bytes >> 31) == 0) ? 1 : -1;
 					immutable e = ((bytes >> 23) & 0xff);
 					immutable m = (e == 0) ? (bytes & 0x7fffff) << 1 :
@@ -128,12 +130,44 @@ void build_const_pool(const ubyte[] buffer)
 			case Constant.Double:
 				writeln("doubling down");
 
-				next_index += 1;
+				double value;
+				immutable high_bytes = to!long(BE32(buffer[i+1 .. i+5]));
+				immutable low_bytes = to!long(BE32(buffer[i+5 .. i+9]));
+
+				immutable bytes = (high_bytes << 32) + low_bytes;
+
+				if(bytes == 0x7f80000000000000) 
+					value = real.infinity;
+				else if(bytes == 0xff80000000000000) 
+					value = -real.infinity;
+				else if(((bytes >= 0x7ff0000000000001) && (bytes <= 0x7fffffffffffffff)) || 
+						((bytes >= 0xfff0000000000001) && (bytes <= 0xffffffffffffffff))) 
+				{
+					value = double.nan;
+				}
+				else 
+				{
+					immutable s = ((bytes >> 63) == 0) ? 1 : -1;
+					immutable e = to!int((bytes >> 52) & 0x7ff);
+					immutable m = (e == 0) ? (bytes & 0xfffffffffffff) << 1 :
+										     (bytes & 0xfffffffffffff) | 0x10000000000000;
+
+					value = s * m * (pow(to!double(2), e - 1075));
+				}
+
+				pool[next_index] = CP_INFO(Double(tag, value));
+				writeln(value);
+
+				next_index += 2;
 				i += 9;
+				
 				break;
 
 			case Constant.Klass:
 				writeln("classless cassidy");
+
+				immutable name_index = BE16(buffer[i+1 .. i+3]);
+				pool[next_index] = CP_INFO(Class(tag, name_index));
 
 				next_index += 1;
 				i += 3;
@@ -142,6 +176,10 @@ void build_const_pool(const ubyte[] buffer)
 			
 			case Constant.String:
 				writeln("stringifying");
+
+				immutable string_index = BE16(buffer[i+1 .. i+3]);
+				pool[next_index] = CP_INFO(String(tag, string_index));
+				writeln(string_index);
 
 				next_index += 1;
 				i += 3;
@@ -184,12 +222,6 @@ struct MethodRef
 	ubyte tag;
 	size_t class_index;
 	size_t name_type_index;
-
-	this(ubyte tag, size_t class_index, size_t name_type_index) {
-		this.tag = tag;
-		this.class_index = class_index;
-		this.name_type_index = name_type_index;
-	}
 }
 
 struct FieldRef
@@ -215,4 +247,16 @@ struct Long
 {
 	ubyte tag;
 	long value;
+}
+
+struct String
+{
+	ubyte tag;
+	size_t string_index;
+}
+
+struct Double
+{
+	ubyte tag;
+	double value;
 }
