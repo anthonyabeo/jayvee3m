@@ -1,7 +1,7 @@
-import std.stdio, std.file, std.variant;
+import std.stdio, std.file, std.variant, std.math, std.conv;
 
 
-alias CP_INFO = Algebraic!(MethodRef);
+alias CP_INFO = Algebraic!(MethodRef, Float, Long);
 
 void main()
 {
@@ -49,8 +49,7 @@ void build_const_pool(const ubyte[] buffer)
 				size_t class_index = BE16(buffer[i+1 .. i+3]);
 				size_t name_type_index = BE16(buffer[i+3 .. i+5]);
 
-				auto method_ref = MethodRef(tag, class_index, name_type_index);
-				pool[next_index] = Algebraic!(MethodRef)(method_ref);
+				pool[next_index] = CP_INFO(MethodRef(tag, class_index, name_type_index));
 
 				next_index += 1;
 				i += 5;
@@ -85,8 +84,27 @@ void build_const_pool(const ubyte[] buffer)
 
 			case Constant.Float:
 				writeln("floating away");
-				
-				next_index += 1;
+				float value;
+				immutable bytes = BE32(buffer[i+1 .. i+5]);
+
+				if(bytes == 0x7f800000) 
+					value = real.infinity;
+				else if(bytes == 0xff800000) 
+					value = -real.infinity;
+				else if(((bytes >= 0x7f800001) && (bytes <= 0x7fffffff)) || ((bytes >= 0xff800001) && (bytes <= 0xffffffff))) 
+					value = float.nan;
+				else {
+					immutable s = ((bytes >> 31) == 0) ? 1 : -1;
+					immutable e = ((bytes >> 23) & 0xff);
+					immutable m = (e == 0) ? (bytes & 0x7fffff) << 1 :
+							                 (bytes & 0x7fffff) | 0x800000;
+
+					value = s * m * (pow(to!float(2), e - 150));
+				}
+
+				pool[next_index] = CP_INFO(Float(tag, value));
+
+				next_index += 1; 
 				i += 5;
 
 				break;
@@ -94,8 +112,17 @@ void build_const_pool(const ubyte[] buffer)
 			case Constant.Long:
 				writeln("longing for love");
 
-				next_index += 1;
+				immutable high_bytes = to!ulong(BE32(buffer[i+1 .. i+5]));
+				immutable low_bytes = to!ulong(BE32(buffer[i+5 .. i+9]));
+
+				immutable bytes = (high_bytes << 32) + low_bytes;
+				pool[next_index] = CP_INFO(Long(tag, bytes));
+
+				writeln(bytes);
+
+				next_index += 2;
 				i += 9;
+
 				break;
 
 			case Constant.Double:
@@ -170,12 +197,6 @@ struct FieldRef
 	ubyte tag;
 	size_t class_index;
 	size_t name_type_index;
-
-	this(ubyte tag, size_t class_index, size_t name_type_index) {
-		this.tag = tag;
-		this.class_index = class_index;
-		this.name_type_index = name_type_index;
-	}
 }
 
 struct Class 
@@ -187,5 +208,11 @@ struct Class
 struct Float
 {
 	ubyte tag;
-	float bytes;
+	float value;
+}
+
+struct Long
+{
+	ubyte tag;
+	long value;
 }
