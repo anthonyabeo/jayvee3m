@@ -15,13 +15,22 @@ void main()
 	auto maj_version = BE16(buffer[6 .. 8]);
 	auto const_pool_cnt = BE16(buffer[8 .. 10]);
 	auto data = build_const_pool(buffer, const_pool_cnt, 10);
-	writeln(data[0]);
-	writeln(data[1]);
+	// writeln(data[0]);
+	// writeln(data[1]);
+	auto i = data[1];
+	auto access_flags = BE16(buffer[i .. i+2]);
+	auto this_class = BE16(buffer[i+2 .. i+4]);
+	auto super_class = BE16(buffer[i+4 .. i+6]);
+	auto interface_cnt = BE16(buffer[i+6 .. i+8]);
 
 	writefln("%x", magic);
 	writefln("%x", min_version);
 	writefln("%x", maj_version);
 	writefln("%x", const_pool_cnt);
+	writefln("%x", access_flags);
+	writefln("%x", this_class);
+	writefln("%x", super_class);
+	writefln("%x", interface_cnt);
 }
 
 auto BE32(const ubyte[] data) 
