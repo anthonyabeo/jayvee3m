@@ -1,7 +1,7 @@
 import std.stdio, std.file, std.variant, std.math, std.conv;
 
 
-alias CP_INFO = Algebraic!(MethodRef, Float, Long, Class, String, Double);
+alias CP_INFO = Algebraic!(MethodRef, Float, Long, Class, String, Double, FieldRef, UTF8);
 
 void main()
 {
@@ -12,7 +12,7 @@ void main()
 	auto min_version = BE16(buffer[4 .. 6]);
 	auto maj_version = BE16(buffer[6 .. 8]);
 	auto const_pool_cnt = BE16(buffer[8 .. 10]);
-	build_const_pool(buffer[10 .. const_pool_cnt + 10]);
+	build_const_pool(buffer, const_pool_cnt, 10);
 
 	writefln("%x", magic);
 	writefln("%x", min_version);
@@ -34,12 +34,12 @@ auto BE16(const ubyte[] data)
 	       data[1];
 }
 
-void build_const_pool(const ubyte[] buffer) 
+void build_const_pool(const ubyte[] buffer, size_t pool_cnt, size_t start) 
 {
 	CP_INFO[] pool = new CP_INFO[buffer.length];
 
-	size_t i = 0, next_index = 1;
-	while(i < 50)
+	size_t i = start, next_index = 1;
+	while(next_index < pool_cnt)
 	{
 		ubyte tag = buffer[i];
 		final switch(tag) 
@@ -58,6 +58,11 @@ void build_const_pool(const ubyte[] buffer)
 
 			case Constant.Fieldref:
 				writeln("field you best");
+
+				immutable class_index = BE16(buffer[i+1 .. i+3]);
+				immutable name_type_index = BE16(buffer[i+3 .. i+5]);
+
+				pool[next_index] = CP_INFO(FieldRef(tag, class_index, name_type_index));
 
 				next_index += 1;
 				i += 5;
@@ -194,11 +199,19 @@ void build_const_pool(const ubyte[] buffer)
 				break;
 
 			case Constant.Utf8:
+				writeln("UTF-8 for the win");
+
+				immutable len = BE16(buffer[i+1 .. i+3]);
+				immutable bytes = buffer[i+3 .. i+3+len].idup;
+
+				pool[next_index] = CP_INFO(UTF8(tag, len, bytes));
+				writeln(bytes);
+
 				next_index += 1;
+				i += (len+3);
 
 				break;
 		}
-		// break;
 	}
 }
 
@@ -259,4 +272,11 @@ struct Double
 {
 	ubyte tag;
 	double value;
+}
+
+struct UTF8
+{
+	ubyte tag;
+	size_t len;
+	immutable ubyte[] value;
 }
