@@ -1,9 +1,12 @@
-import std.stdio, std.file, std.variant, std.math, std.conv,
-       std.typecons;
+import std.stdio, std.file, std.variant, std.math, std.conv, std.typecons;
+import constants, utils;
 
 
 alias CP_INFO = Algebraic!(Method, Float, Long, Class, String, Double, 
                            Field, UTF8, NameAndType, Integer, InterfaceMethod);
+
+alias ATTR_INFO = Algebraic!(SourceFile, ConstantValue);
+
 
 void main()
 {
@@ -16,12 +19,21 @@ void main()
 	auto const_pool_cnt = BE16(buffer[8 .. 10]);
 	auto data = build_const_pool(buffer, const_pool_cnt, 10);
 	// writeln(data[0]);
-	// writeln(data[1]);
+	writeln(data[1]);
 	auto i = data[1];
 	auto access_flags = BE16(buffer[i .. i+2]);
 	auto this_class = BE16(buffer[i+2 .. i+4]);
 	auto super_class = BE16(buffer[i+4 .. i+6]);
 	auto interface_cnt = BE16(buffer[i+6 .. i+8]);
+	auto intrfcs = build_interfaces_table(buffer, interface_cnt, i+8);
+
+	i = intrfcs[1];
+	auto field_cnt = BE16(buffer[i .. i+2]);
+	auto flds = build_fields_table(buffer, field_cnt, i+2, data[0]);
+
+	i = flds[1];
+	auto methods_cnt = BE16(buffer[i .. i+2]);
+	auto mthds = build_method_table(buffer, methods_cnt, i+2);
 
 	writefln("%x", magic);
 	writefln("%x", min_version);
@@ -31,20 +43,12 @@ void main()
 	writefln("%x", this_class);
 	writefln("%x", super_class);
 	writefln("%x", interface_cnt);
-}
-
-auto BE32(const ubyte[] data) 
-{
-	return data[0] << 24 |
-	       data[1] << 16 |
-		   data[2] << 8  |
-		   data[3];
-}
-
-auto BE16(const ubyte[] data) 
-{
-	return data[0] << 8  | 
-	       data[1];
+	writeln(intrfcs[0]);
+	writeln(intrfcs[1]);
+	writefln("%x", field_cnt);
+	writeln(flds[0]);
+	writeln(flds[1]);
+	writefln("%x", methods_cnt);
 }
 
 Tuple!(CP_INFO[], size_t) build_const_pool(const ubyte[] buffer, size_t pool_cnt, size_t start) 
@@ -245,88 +249,110 @@ Tuple!(CP_INFO[], size_t) build_const_pool(const ubyte[] buffer, size_t pool_cnt
 	return Tuple!(CP_INFO[], "const_pool", size_t, "start")(pool, i);
 }
 
-enum Constant : ubyte 
+Tuple!(size_t[], size_t) build_interfaces_table(const ubyte[] buffer, size_t interface_cnt, size_t start)
 {
-	Klass = 7,
-	Fieldref = 9,
-	Methodref = 10,
-	InterfaceMethodref = 11,
-	String = 8,
-	Integer = 3,
-	Float = 4,
-	Long = 5,
-	Double = 6,
-	NameAndType = 12,
-	Utf8 = 1
+	size_t[] interfaces = new size_t[interface_cnt];
+	size_t i = 0;
+	while(i < interface_cnt)
+	{
+		interfaces ~= BE16(buffer[start .. start+2]);
+		start += 2;
+		i += 1;
+	}
+
+	return Tuple!(size_t[], size_t) (interfaces, start);
 }
 
-struct Method
+Tuple!(field_info[], size_t) build_fields_table(const ubyte[] buffer, size_t field_cnt, size_t start, CP_INFO[] pool)
 {
-	ubyte tag;
-	size_t class_index;
-	size_t name_type_index;
+	field_info[] fields = new field_info[field_cnt];
+
+	for(size_t i = 0; i < field_cnt; i++)
+	{
+		auto access_flags = BE16(buffer[start .. start+2]);
+		auto name_index = BE16(buffer[start+2 .. start+4]);
+		auto descriptor_index = BE16(buffer[start+4 .. start+6]);
+		auto attributes_count = BE16(buffer[start+6 .. start+8]);
+		auto attributes = build_attributes_table(buffer, attributes_count, start+8, pool);
+
+		fields ~= field_info(access_flags, name_index, descriptor_index, attributes_count, attributes[0]);
+		start += attributes[1];
+	}
+	
+	return Tuple!(field_info[], size_t) (fields, start);
 }
 
-struct Field
+Tuple!(ATTR_INFO[], size_t) build_attributes_table(const ubyte[] buffer, size_t attr_cnt, size_t start, CP_INFO[] pool)
 {
-	ubyte tag;
-	size_t class_index;
-	size_t name_type_index;
+	ATTR_INFO[] attributes = new ATTR_INFO[attr_cnt];
+
+	for(size_t i = 0; i < attr_cnt; i++)
+	{
+		size_t attr_name_index = BE16(buffer[start .. start+2]);
+		immutable cnstnt = *pool[attr_name_index].peek!(UTF8);
+
+		if(cnstnt.value == cast(ubyte[])"SourceFilex") 
+		{
+			immutable attribute_len = BE32(buffer[start+2 .. start+6]);
+			immutable sourcefile_index = BE16(buffer[start+6 .. start+8]);
+
+			attributes[i] = SourceFile(attr_name_index, attribute_len, sourcefile_index);
+
+			start += 8;
+		} 
+		else if(cnstnt.value == cast(ubyte[])"LineNumberTable")
+		{
+
+		}
+		else if(cnstnt.value == cast(ubyte[])"ConstantValue")
+		{
+			immutable attribute_len = BE32(buffer[start+2 .. start+6]);
+			immutable constantvalue_index = BE16(buffer[start+6 .. start+8]);
+
+			attributes[i] = ConstantValue(attr_name_index, attribute_len, constantvalue_index);
+			start += 8;
+		}
+		else if(cnstnt.value == cast(ubyte[])"Code")
+		{
+
+		}
+		else if(cnstnt.value == cast(ubyte[])"Exception")
+		{
+
+		}
+		else if(cnstnt.value == cast(ubyte[])"LocalVariableTable")
+		{
+
+		}
+	}
+
+	return Tuple!(ATTR_INFO[], size_t) (attributes, start);
 }
 
-struct Class 
-{
-	ubyte tag;
-	size_t name_index;
-}
 
-struct Float
-{
-	ubyte tag;
-	float value;
-}
 
-struct Long
+// FIELDS
+struct field_info
 {
-	ubyte tag;
-	long value;
-}
-
-struct String
-{
-	ubyte tag;
-	size_t string_index;
-}
-
-struct Double
-{
-	ubyte tag;
-	double value;
-}
-
-struct UTF8
-{
-	ubyte tag;
-	size_t len;
-	immutable ubyte[] value;
-}
-
-struct NameAndType
-{
-	ubyte tag;
+	size_t access_flags;
 	size_t name_index;
 	size_t descriptor_index;
+	size_t attributes_count;
+	ATTR_INFO[] attributes;
 }
 
-struct Integer
-{
-	ubyte tag;
-	int value;
+
+// ATTRIBUTES
+struct SourceFile
+{	
+	size_t attribute_name_index;
+	size_t attribute_len;
+	size_t sourcefile_index;
 }
 
-struct InterfaceMethod
-{
-	ubyte tag;
-	size_t class_index;
-	size_t name_type_index;
+struct ConstantValue
+{	
+	size_t attribute_name_index;
+	size_t attribute_len;
+	size_t constantvalue_index;
 }
