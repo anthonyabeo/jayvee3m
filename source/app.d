@@ -1,12 +1,9 @@
 import std.stdio, std.file, std.variant, std.math, std.conv, std.typecons;
-import constants, utils;
+import constants, utils, attributes;
 
-import sumtype;
 
 alias CP_INFO = Algebraic!(Method, Float, Long, Class, String, Double,
                            Field, UTF8, NameAndType, Integer, InterfaceMethod);
-
-alias ATTR_INFO = SumType!(SourceFile, ConstantValue, Excepsion, Code, LineNumberTable, LocalVariableTable);
 
 
 void main()
@@ -436,60 +433,6 @@ struct field_info
 	size_t descriptor_index;
 	size_t attributes_count;
 	ATTR_INFO[] attributes;
-}
-
-
-// ATTRIBUTES
-struct SourceFile
-{	
-	size_t attribute_name_index;
-	size_t attribute_len;
-	size_t sourcefile_index;
-}
-
-struct ConstantValue
-{	
-	size_t attribute_name_index;
-	size_t attribute_len;
-	size_t constantvalue_index;
-}
-
-struct Excepsion
-{
-	size_t attribute_name_index;
-	size_t attribute_len;
-	size_t number_of_exceptions;
-	size_t[] exception_index_table;
-}
-
-struct Code
-{
-	size_t attribute_name_index;
-	size_t attribute_len;
-	size_t max_stack;
-	size_t max_locals;
-	size_t code_length;
-	const(ubyte[]) code;
-	size_t exception_table_length;
-	Tuple!(size_t, size_t, size_t, size_t) exception_table;
-	size_t attribute_count;
-	ATTR_INFO[] attributes;
-}
-
-struct LocalVariableTable
-{
-	size_t attribute_name_index;
-	size_t attribute_len;
-	size_t local_variable_table_length;
-	Tuple!(size_t, size_t, size_t, size_t, size_t)[] local_variable_table;
-}
-
-struct LineNumberTable
-{
-	size_t attribute_name_index;
-	size_t attribute_len;
-	size_t line_number_table_length;
-	Tuple!(size_t, size_t)[] line_number_table;
 }
 
 // 
