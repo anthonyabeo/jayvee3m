@@ -14,3 +14,6 @@ jayvee3m-test-*
 *.obj
 *.lst
 Main.class
+.vscode/
+.idea
+jayvee3m.iml
