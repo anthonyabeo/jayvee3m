@@ -3,6 +3,9 @@
 		"Abeo Anthony Anabila"
 	],
 	"copyright": "Copyright © 2019, Abeo Anthony Anabila",
+	"dependencies": {
+		"sumtype": "~>0.9.2"
+	},
 	"description": "An implementation of the JVM in D.",
 	"license": "MIT",
 	"name": "jayvee3m"
