@@ -1,4 +1,4 @@
-import std.stdio, std.file, std.variant, std.math, std.conv, std.typecons;
+import std.stdio, std.file, std.variant, std.math, std.conv, std.typecons, core.stdc.stdlib: exit;
 import constants, utils, attributes;
 
 
@@ -6,9 +6,17 @@ alias CP_INFO = Algebraic!(Method, Float, Long, Class, String, Double,
                            Field, UTF8, NameAndType, Integer, InterfaceMethod);
 
 
-void main()
+void main(string[] args)
 {
-	auto f = File("Main.class", "r");
+	if(args.length < 2) 
+	{
+		writefln("No class file found.");
+		exit(1);
+	}
+
+	string file = args[1];
+
+	auto f = File(file, "r");
 	auto buffer = f.rawRead(new ubyte[f.size()]);
 
 	auto magic = bigEndian32from(buffer[0 .. 4]);
@@ -35,6 +43,12 @@ void main()
 	const methods_cnt = bigEndian16from(buffer[i .. i+2]);
 	auto mthds = build_method_table(buffer, methods_cnt, i+2, data[0]);
 
+	i = mthds[1];
+	writeln("methods", i);
+	const attr_cnt = bigEndian16from(buffer[i .. i+2]);
+	auto attrbuts =  build_attributes_table(buffer, attr_cnt, i+2, data[0]);
+
+
 	writefln("%x", magic);
 	writefln("%x", min_version);
 	writefln("%x", maj_version);
@@ -51,6 +65,8 @@ void main()
 	writefln("%x", methods_cnt);
 	writeln(mthds[0]);
 	writeln(mthds[1]);
+	writeln(attrbuts[0]);
+	writeln(attrbuts[1]);
 }
 
 Tuple!(CP_INFO[], size_t) build_const_pool(const ubyte[] buffer, size_t pool_cnt, size_t start) 
