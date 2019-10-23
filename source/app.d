@@ -1,4 +1,6 @@
-import std.stdio, std.file, std.variant, std.math, std.conv, std.typecons, core.stdc.stdlib: exit;
+import std.stdio, std.file, std.variant, std.math, std.conv, std.typecons, 
+       core.stdc.stdlib: exit;
+	   
 import constants, utils, attributes;
 
 
@@ -14,8 +16,8 @@ void main(string[] args)
 		exit(1);
 	}
 
-	string file = args[1];
-
+	string file = args[1] ~ ".class";
+	
 	auto f = File(file, "r");
 	auto buffer = f.rawRead(new ubyte[f.size()]);
 
