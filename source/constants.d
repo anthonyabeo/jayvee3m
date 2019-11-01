@@ -1,5 +1,11 @@
 module constants;
 
+import std.variant;
+
+
+alias CP_INFO = Algebraic!(Method, Float, Long, Class, String, Double,
+                           Field, UTF8, NameAndType, Integer, InterfaceMethod);
+
 
 enum Constant : ubyte 
 {
