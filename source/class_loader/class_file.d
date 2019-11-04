@@ -1,11 +1,10 @@
 module class_loader.class_file;
 
-public import attributes: ATTR_INFO;
-import constants: CP_INFO;
-import app: field_info, method_info;
+public import attributes : ATTR_INFO;
+import constants : CP_INFO;
+import app : FieldInfo, MethodInfo;
 
-
-struct ClassFile 
+struct ClassFile
 {
     uint magic;
     uint minor_version, major_version;
@@ -15,10 +14,9 @@ struct ClassFile
     uint interface_count;
     size_t[] interfaces;
     uint field_count;
-    field_info[] fields;
+    FieldInfo[] fields;
     uint method_cnt;
-    method_info[] m_info;
+    MethodInfo[] m_info;
     uint attribute_count;
     ATTR_INFO[] attributes;
 }
-
