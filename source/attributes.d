@@ -1,7 +1,7 @@
 module attributes;
 
-import std.typecons;
-import sumtype;
+import std.typecons: Tuple;
+import sumtype: SumType, match;
 
 alias ATTR_INFO = SumType!(SourceFile, ConstantValue, Excepsion, Code, LineNumberTable, LocalVariableTable);
 
@@ -55,4 +55,14 @@ struct LineNumberTable
 	size_t attribute_len;
 	size_t line_number_table_length;
 	Tuple!(size_t, size_t)[] line_number_table;
+}
+
+auto get_attribute(ATTR_INFO attr)
+{
+	return attr.match!(
+		(Code c) => Code(c.attribute_name_index, c.attribute_len, c.max_stack, c.max_locals,
+						c.code_length, c.code, c.exception_table_length, c.exception_table,
+						c.attribute_count, c.attributes),
+		_ => Code()
+	);
 }
