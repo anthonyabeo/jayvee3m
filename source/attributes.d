@@ -34,7 +34,7 @@ struct Code
 	size_t max_stack;
 	size_t max_locals;
 	size_t code_length;
-	const(ubyte[]) code;
+	ubyte[] code;
 	size_t exception_table_length;
 	Tuple!(size_t, size_t, size_t, size_t) exception_table;
 	size_t attribute_count;
