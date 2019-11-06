@@ -11,7 +11,7 @@ import utils : bigEndian16from, bigEndian32from;
 struct BootstrapLoader
 {
 public:
-    static ClassFile parse_class_file(const ubyte[] buffer)
+    static ClassFile parse_class_file(ubyte[] buffer)
     {
         auto magic = bigEndian32from(buffer[0 .. 4]);
         auto min_version = bigEndian16from(buffer[4 .. 6]);
@@ -46,7 +46,7 @@ public:
     }
 
 private:
-    static Tuple!(CP_INFO[], size_t) build_const_pool(const ubyte[] buffer,
+    static Tuple!(CP_INFO[], size_t) build_const_pool(ubyte[] buffer,
             size_t pool_cnt, size_t start)
     {
         CP_INFO[] pool = new CP_INFO[pool_cnt];
@@ -220,7 +220,7 @@ private:
         return Tuple!(CP_INFO[], "const_pool", size_t, "start")(pool, i);
     }
 
-    static Tuple!(size_t[], size_t) build_interfaces_table(const ubyte[] buffer,
+    static Tuple!(size_t[], size_t) build_interfaces_table(ubyte[] buffer,
             size_t interface_cnt, size_t start)
     {
         size_t[] interfaces; //= new size_t[interface_cnt];
@@ -235,7 +235,7 @@ private:
         return Tuple!(size_t[], size_t)(interfaces, start);
     }
 
-    static Tuple!(FieldInfo[], size_t) build_fields_table(const ubyte[] buffer,
+    static Tuple!(FieldInfo[], size_t) build_fields_table(ubyte[] buffer,
             size_t field_cnt, size_t start, CP_INFO[] pool)
     {
         FieldInfo[] fields; //= new FieldInfo[field_cnt];
@@ -256,7 +256,7 @@ private:
         return Tuple!(FieldInfo[], size_t)(fields, start);
     }
 
-    static Tuple!(MethodInfo[], size_t) build_method_table(const ubyte[] buffer,
+    static Tuple!(MethodInfo[], size_t) build_method_table(ubyte[] buffer,
             size_t method_cnt, size_t start, CP_INFO[] pool)
     {
         MethodInfo[] methods;
@@ -276,7 +276,7 @@ private:
         return Tuple!(MethodInfo[], size_t)(methods, start);
     }
 
-    static Tuple!(ATTR_INFO[], size_t) build_attributes_table(const ubyte[] buffer,
+    static Tuple!(ATTR_INFO[], size_t) build_attributes_table(ubyte[] buffer,
             size_t attr_cnt, size_t start, CP_INFO[] pool)
     {
         ATTR_INFO[] attributes = new ATTR_INFO[attr_cnt];
@@ -328,8 +328,8 @@ private:
                 const attribute_len = bigEndian32from(buffer[start + 2 .. start + 6]),
                     max_stack = bigEndian16from(buffer[start + 6 .. start + 8]),
                     max_locals = bigEndian16from(buffer[start + 8 .. start + 10]),
-                    code_length = bigEndian32from(buffer[start + 10 .. start + 14]),
-                    code = buffer[start + 14 .. start + 14 + code_length];
+                    code_length = bigEndian32from(buffer[start + 10 .. start + 14]);
+                ubyte[] code = buffer[start + 14 .. start + 14 + code_length];
 
                 start += (code_length + 14);
                 const exception_tbl_len = bigEndian16from(buffer[start .. start + 2]);
