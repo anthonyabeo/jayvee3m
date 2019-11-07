@@ -1,10 +1,12 @@
 import std.stdio;
+import std.container.array : Array;
 
 import memory : Shared, PerThread, StackFrame;
 import class_loader.class_file : ClassFile;
-import constants : UTF8;
+import constants : UTF8, Method;
 import attributes : ATTR_INFO, Code, get_attribute;
-import instructions: Opcode;
+import instructions : Opcode;
+import utils : bigEndian16from;
 
 struct JVM
 {
@@ -21,7 +23,7 @@ struct JVM
 
     static PerThread newPerThread()
     {
-        StackFrame[] frame;
+        Array!StackFrame frame;
         return PerThread(0, 0, frame);
     }
 
@@ -44,7 +46,7 @@ struct JVM
                 foreach (attribute; mthd.attributes)
                 {
                     auto c = get_attribute(attribute);
-                    auto frame = StackFrame(c.max_locals, c.max_stack, c.code);
+                    auto frame = StackFrame(c.max_locals, c.max_stack, c.code, mainClassFile.constant_pool);
 
                     this.perThread.javaStack ~= frame;
                     execute();
@@ -55,26 +57,39 @@ struct JVM
 
     void execute()
     {
-        const curStack = this.perThread.javaStack[0];
-        writeln(curStack);
+        auto curStackFrame = this.perThread.javaStack.back;
+        //writeln(curStackFrame);
 
-        while(this.perThread.pc < curStack.code.length)
+        while (this.perThread.pc < curStackFrame.code.length)
         {
-            immutable opcode = curStack.code[this.perThread.pc];
-            final switch(opcode)
+            immutable opcode = curStackFrame.code[this.perThread.pc];
+            final switch (opcode)
             {
-                case Opcode.aload_0:
-                    writeln("executing: aload_0");
-                    this.perThread.pc += 1;
-                    break;
-                case Opcode.invokespecial:
-                    writeln("executing: invokespecial");
-                    this.perThread.pc += 3;
-                    break;
-                case Opcode.riturn:
-                    writeln("executing: return");
-                    this.perThread.pc += 1;
-                    break;
+            case Opcode.aload_0:
+                writeln("executing: aload_0");
+                //curStackFrame.operandStack ~= curStackFrame.locals[0];
+
+                this.perThread.pc += 1;
+                break;
+
+            case Opcode.invokespecial:
+                writeln("executing: invokespecial");
+                //immutable i = this.perThread.pc;
+                //immutable index = bigEndian16from(curStackFrame.code[i+1 .. i+3]);
+                //
+                //auto entry = curStackFrame.constPool[index];
+                //
+                //immutable method = *entry.peek!(Method);
+
+                this.perThread.pc += 3;
+                break;
+
+            case Opcode.riturn:
+                writeln("executing: return");
+                //this.perThread.javaStack.removeBack();
+
+                this.perThread.pc += 1;
+                break;
             }
         }
 
