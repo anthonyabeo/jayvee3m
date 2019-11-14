@@ -4,44 +4,44 @@ public import attributes : ATTR_INFO;
 import constants : CP_INFO;
 import app : FieldInfo, MethodInfo;
 
-///
+/// 
 struct ClassFile
 {
     /// 
     uint magic;
 
     /// 
-    uint minor_version, major_version;
+    uint minorVersion, majorVersion;
 
     /// 
-    uint const_pool_count;
+    uint constantPoolCount;
 
     /// 
-    CP_INFO[] constant_pool;
+    CP_INFO[] constantPool;
 
     /// 
-    uint access_flags, this_class, super_class;
+    uint accessFlags, thisClass, superClass;
 
     /// 
-    uint interface_count;
+    uint interfaceCount;
 
     /// 
     size_t[] interfaces;
 
     /// 
-    uint field_count;
+    uint fieldCount;
 
     /// 
     FieldInfo[] fields;
 
     /// 
-    uint method_cnt;
+    uint methodCount;
 
     /// 
-    MethodInfo[] m_info;
+    MethodInfo[] methodInfo;
 
     /// 
-    uint attribute_count;
+    uint attributeCount;
 
     /// 
     ATTR_INFO[] attributes;

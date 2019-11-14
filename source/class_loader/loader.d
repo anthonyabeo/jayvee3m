@@ -9,7 +9,7 @@ import app : MethodInfo, FieldInfo;
 import utils : bigEndian16from, bigEndian32from;
 
 /// 
-struct Bootstraploader
+struct BootstrapLoader
 {
 public:
     /// 
@@ -351,7 +351,7 @@ private:
                 const attribute_count = bigEndian16from(buffer[start .. start + 2]);
                 auto attrbt = buildAttributesTable(buffer, attribute_count, start + 2, pool);
 
-                ATTR_INFO a = Code(attr_name_index, attribute_len, max_stack, max_locals, code_length, code,
+                const ATTR_INFO a = Code(attr_name_index, attribute_len, max_stack, max_locals, code_length, code,
                         exception_tbl_len, exception_table, attribute_count, attrbt[0]);
 
                 attributes[i] = a;

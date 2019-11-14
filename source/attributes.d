@@ -9,73 +9,72 @@ alias ATTR_INFO = SumType!(SourceFile, ConstantValue, Excepsion, Code, LineNumbe
 struct SourceFile
 {	
 	/// 
-	size_t attribute_name_index;
+	size_t attributeNameIndex;
 
 	/// 
-	size_t attribute_len;
+	size_t attributeLength;
 
 	/// 
-	size_t sourcefile_index;
+	size_t sourcefileIndex;
 }
 
 struct ConstantValue
 {	
 	/// 
-	size_t attribute_name_index;
+	size_t attributeNameIndex;
 
 	/// 
-	size_t attribute_len;
+	size_t attributeLength;
 
 	/// 
-	size_t constantvalue_index;
+	size_t constantValueIndex;
 }
 
 /// 
 struct Excepsion
 {
 	/// 
-	size_t attribute_name_index;
+	size_t attributeNameIndex;
 
 	/// 
-	size_t attribute_len;
+	size_t attributeLength;
 
 	/// 
-	size_t number_of_exceptions;
+	size_t numberOfExceptions;
 
 	/// 
-	size_t[] exception_index_table;
+	size_t[] exceptionIndexTable;
 }
-
 
 /// 
 struct Code
 {
 	/// 
-	size_t attribute_name_index;
+	size_t attributeNameIndex;
 
 	/// 
-	size_t attribute_len;
+	size_t attributeLength;
 
 	/// 
-	size_t max_stack;
+	size_t maxStack;
 
 	/// 
-	size_t max_locals;
+	size_t maxLocals;
 
 	/// 
-	size_t code_length;
+	size_t codeLength;
 
 	/// 
 	ubyte[] code;
 
 	/// 
-	size_t exception_table_length;
+	size_t exceptionTableLength;
 
 	/// 
-	Tuple!(size_t, size_t, size_t, size_t) exception_table;
+	Tuple!(size_t, size_t, size_t, size_t) exceptionTable;
 
 	/// 
-	size_t attribute_count;
+	size_t attributeCount;
 
 	/// 
 	ATTR_INFO[] attributes;
@@ -85,40 +84,40 @@ struct Code
 struct LocalVariableTable
 {
 	/// 
-	size_t attribute_name_index;
+	size_t attributeNameIndex;
 
 	/// 
-	size_t attribute_len;
+	size_t attributeLength;
 
 	/// 
-	size_t local_variable_table_length;
+	size_t localVariableTableLength;
 
 	/// 
-	Tuple!(size_t, size_t, size_t, size_t, size_t)[] local_variable_table;
+	Tuple!(size_t, size_t, size_t, size_t, size_t)[] localVariableTable;
 }
 
 /// 
 struct LineNumberTable
 {
 	/// 
-	size_t attribute_name_index;
+	size_t attributeNameIndex;
 
 	/// 
-	size_t attribute_len;
+	size_t attributeLength;
 
 	/// 
-	size_t line_number_table_length;
+	size_t lineNumberTableLength;
 
 	/// 
-	Tuple!(size_t, size_t)[] line_number_table;
+	Tuple!(size_t, size_t)[] lineNumberTable;
 }
 
 auto get_attribute(ATTR_INFO attr)
 {
 	return attr.match!(
-		(Code c) => Code(c.attribute_name_index, c.attribute_len, c.max_stack, c.max_locals,
-						c.code_length, c.code, c.exception_table_length, c.exception_table,
-						c.attribute_count, c.attributes),
+		(Code c) => Code(c.attributeNameIndex, c.attributeLength, c.maxStack, c.maxLocals,
+						c.codeLength, c.code, c.exceptionTableLength, c.exceptionTable,
+						c.attributeCount, c.attributes),
 		_ => Code()
 	);
 }

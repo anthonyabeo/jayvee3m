@@ -53,10 +53,10 @@ struct JVM
         auto mainClassFile = this.sharedMemory.method_area[this.mainClass];
 
         // Call Main's constructor
-        foreach (mthd; mainClassFile.m_info)
+        foreach (mthd; mainClassFile.methodInfo)
         {
-            const name = *mainClassFile.constant_pool[mthd.nameIndex].peek!(UTF8);
-            const descrptor = *mainClassFile.constant_pool[mthd.descriptorIndex].peek!(UTF8);
+            const name = *mainClassFile.constantPool[mthd.nameIndex].peek!(UTF8);
+            const descrptor = *mainClassFile.constantPool[mthd.descriptorIndex].peek!(UTF8);
 
             bool isMainConstructor = mthd.accessFlags == 0x01
                 && name.value == cast(ubyte[]) "<init>" && descrptor.value == cast(ubyte[]) "()V";
@@ -66,8 +66,8 @@ struct JVM
                 foreach (attribute; mthd.attributes)
                 {
                     auto c = get_attribute(attribute);
-                    auto frame = StackFrame(c.max_locals, c.max_stack, c.code,
-                            mainClassFile.constant_pool);
+                    auto frame = StackFrame(c.maxLocals, c.maxStack, c.code,
+                            mainClassFile.constantPool);
 
                     this.perThread.javaStack ~= frame;
                     execute();
