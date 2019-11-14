@@ -8,27 +8,29 @@ import class_loader.class_file;
 import app : MethodInfo, FieldInfo;
 import utils : bigEndian16from, bigEndian32from;
 
-struct BootstrapLoader
+/// 
+struct Bootstraploader
 {
 public:
-    static ClassFile parse_class_file(ubyte[] buffer)
+    /// 
+    static ClassFile parseClassFile(ubyte[] buffer)
     {
         auto magic = bigEndian32from(buffer[0 .. 4]);
         auto min_version = bigEndian16from(buffer[4 .. 6]);
         auto maj_version = bigEndian16from(buffer[6 .. 8]);
         auto const_pool_cnt = bigEndian16from(buffer[8 .. 10]);
-        auto const_pool = build_const_pool(buffer, const_pool_cnt, 10);
+        auto const_pool = buildConstantPool(buffer, const_pool_cnt, 10);
 
         auto i = const_pool[1];
         auto access_flags = bigEndian16from(buffer[i .. i + 2]);
         auto this_class = bigEndian16from(buffer[i + 2 .. i + 4]);
         auto super_class = bigEndian16from(buffer[i + 4 .. i + 6]);
         auto interface_cnt = bigEndian16from(buffer[i + 6 .. i + 8]);
-        auto interfaces = build_interfaces_table(buffer, interface_cnt, i + 8);
+        auto interfaces = buildInterfacesTable(buffer, interface_cnt, i + 8);
 
         i = interfaces[1];
         auto field_cnt = bigEndian16from(buffer[i .. i + 2]);
-        auto fields = build_fields_table(buffer, field_cnt, i + 2, const_pool[0]);
+        auto fields = buildFieldsTable(buffer, field_cnt, i + 2, const_pool[0]);
 
         i = fields[1];
         const methods_cnt = bigEndian16from(buffer[i .. i + 2]);
@@ -36,7 +38,7 @@ public:
 
         i = methods[1];
         const attr_cnt = bigEndian16from(buffer[i .. i + 2]);
-        auto attributes = build_attributes_table(buffer, attr_cnt, i + 2, const_pool[0]);
+        auto attributes = buildAttributesTable(buffer, attr_cnt, i + 2, const_pool[0]);
 
         auto cf = ClassFile(magic, min_version, maj_version, const_pool_cnt, const_pool[0], access_flags,
                 this_class, super_class, interface_cnt, interfaces[0], field_cnt,
@@ -46,7 +48,7 @@ public:
     }
 
 private:
-    static Tuple!(CP_INFO[], size_t) build_const_pool(ubyte[] buffer, size_t pool_cnt, size_t start)
+    static Tuple!(CP_INFO[], size_t) buildConstantPool(ubyte[] buffer, size_t pool_cnt, size_t start)
     {
         CP_INFO[] pool = new CP_INFO[pool_cnt];
 
@@ -219,7 +221,7 @@ private:
         return Tuple!(CP_INFO[], "const_pool", size_t, "start")(pool, i);
     }
 
-    static Tuple!(size_t[], size_t) build_interfaces_table(ubyte[] buffer,
+    static Tuple!(size_t[], size_t) buildInterfacesTable(ubyte[] buffer,
             size_t interface_cnt, size_t start)
     {
         size_t[] interfaces; //= new size_t[interface_cnt];
@@ -234,7 +236,7 @@ private:
         return Tuple!(size_t[], size_t)(interfaces, start);
     }
 
-    static Tuple!(FieldInfo[], size_t) build_fields_table(ubyte[] buffer,
+    static Tuple!(FieldInfo[], size_t) buildFieldsTable(ubyte[] buffer,
             size_t field_cnt, size_t start, CP_INFO[] pool)
     {
         FieldInfo[] fields; //= new FieldInfo[field_cnt];
@@ -245,7 +247,7 @@ private:
             auto name_index = bigEndian16from(buffer[start + 2 .. start + 4]);
             auto descriptor_index = bigEndian16from(buffer[start + 4 .. start + 6]);
             auto attributes_count = bigEndian16from(buffer[start + 6 .. start + 8]);
-            auto attributes = build_attributes_table(buffer, attributes_count, start + 8, pool);
+            auto attributes = buildAttributesTable(buffer, attributes_count, start + 8, pool);
 
             fields ~= FieldInfo(access_flags, name_index, descriptor_index,
                     attributes_count, attributes[0]);
@@ -265,7 +267,7 @@ private:
                 name_index = bigEndian16from(buffer[start + 2 .. start + 4]),
                 descriptor_index = bigEndian16from(buffer[start + 4 .. start + 6]),
                 attributes_count = bigEndian16from(buffer[start + 6 .. start + 8]),
-                attributes = build_attributes_table(buffer, attributes_count, start + 8, pool);
+                attributes = buildAttributesTable(buffer, attributes_count, start + 8, pool);
 
             methods ~= MethodInfo(access_flags, name_index, descriptor_index,
                     attributes_count, attributes[0]);
@@ -275,7 +277,7 @@ private:
         return Tuple!(MethodInfo[], size_t)(methods, start);
     }
 
-    static Tuple!(ATTR_INFO[], size_t) build_attributes_table(ubyte[] buffer,
+    static Tuple!(ATTR_INFO[], size_t) buildAttributesTable(ubyte[] buffer,
             size_t attr_cnt, size_t start, CP_INFO[] pool)
     {
         ATTR_INFO[] attributes = new ATTR_INFO[attr_cnt];
@@ -347,7 +349,7 @@ private:
                 }
 
                 const attribute_count = bigEndian16from(buffer[start .. start + 2]);
-                auto attrbt = build_attributes_table(buffer, attribute_count, start + 2, pool);
+                auto attrbt = buildAttributesTable(buffer, attribute_count, start + 2, pool);
 
                 ATTR_INFO a = Code(attr_name_index, attribute_len, max_stack, max_locals, code_length, code,
                         exception_tbl_len, exception_table, attribute_count, attrbt[0]);

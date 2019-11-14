@@ -8,12 +8,25 @@ import attributes : ATTR_INFO, Code, get_attribute;
 import instructions : Opcode;
 import utils : bigEndian16from;
 
+/// 
 struct JVM
 {
+    /// name of the class that contains the main method.
     string mainClass;
+
+    /// an instance of shared memory regions.
     Shared sharedMemory;
+
+    /// an instance of the memory areas for each thread.
     PerThread perThread;
 
+    /** 
+     * Constructor for creating and instance of a JVM.
+     *
+     * Params:
+     *   cf = class file object created from parsing a .class file
+     *   mainClass = The name of the class that contains the main method.
+     */
     this(ClassFile cf, string mainClass)
     {
         this.mainClass = mainClass;
@@ -21,12 +34,20 @@ struct JVM
         this.perThread = newPerThread();
     }
 
+    /** 
+     * creates and returns a new object that holds the instruction pointer,
+        stack pointer and stack frame.
+
+     * Returns: a new instance of PerThread that has the IP, SP and stack frame
+                 initialized to zero their respective default values.
+     */
     static PerThread newPerThread()
     {
         Array!StackFrame frame;
         return PerThread(0, 0, frame);
     }
 
+    ///
     void start()
     {
         auto mainClassFile = this.sharedMemory.method_area[this.mainClass];
@@ -34,10 +55,10 @@ struct JVM
         // Call Main's constructor
         foreach (mthd; mainClassFile.m_info)
         {
-            const name = *mainClassFile.constant_pool[mthd.name_index].peek!(UTF8);
-            const descrptor = *mainClassFile.constant_pool[mthd.descriptor_index].peek!(UTF8);
+            const name = *mainClassFile.constant_pool[mthd.nameIndex].peek!(UTF8);
+            const descrptor = *mainClassFile.constant_pool[mthd.descriptorIndex].peek!(UTF8);
 
-            bool isMainConstructor = mthd.access_flags == 0x01
+            bool isMainConstructor = mthd.accessFlags == 0x01
                 && name.value == cast(ubyte[]) "<init>" && descrptor.value == cast(ubyte[]) "()V";
 
             if (isMainConstructor)
@@ -55,6 +76,7 @@ struct JVM
         }
     }
 
+    ///
     void execute()
     {
         auto curStackFrame = this.perThread.javaStack.back;

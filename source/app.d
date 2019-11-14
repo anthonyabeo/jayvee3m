@@ -19,28 +19,46 @@ void main(string[] args)
     auto f = File(class_file, "r");
     auto buffer = f.rawRead(new ubyte[f.size()]);
 
-    auto cf = BootstrapLoader.parse_class_file(buffer);
+    auto cf = BootstrapLoader.parseClassFile(buffer);
     // writeln(cf);
     auto jvm = JVM(cf, class_file);
     jvm.start();
 }
 
-// FIELDS
+/// FIELDS
 struct FieldInfo
 {
-    size_t access_flags;
-    size_t name_index;
-    size_t descriptor_index;
-    size_t attributes_count;
+    /// 
+    size_t accessFlags;
+
+    /// 
+    size_t nameIndex;
+
+    /// 
+    size_t descriptorIndex;
+
+    /// 
+    size_t attributesCount;
+
+    /// 
     ATTR_INFO[] attributes;
 }
 
-// 
+/// 
 struct MethodInfo
 {
-    size_t access_flags;
-    size_t name_index;
-    size_t descriptor_index;
-    size_t attributes_count;
+    /// 
+    size_t accessFlags;
+
+    /// 
+    size_t nameIndex;
+
+    /// 
+    size_t descriptorIndex;
+
+    /// 
+    size_t attributesCount;
+
+    /// 
     ATTR_INFO[] attributes;
 }
