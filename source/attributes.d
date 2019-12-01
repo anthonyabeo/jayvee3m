@@ -18,6 +18,7 @@ struct SourceFile
 	size_t sourcefileIndex;
 }
 
+///
 struct ConstantValue
 {	
 	/// 

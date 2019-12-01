@@ -28,37 +28,43 @@ void main(string[] args)
 /// FIELDS
 struct FieldInfo
 {
-    /// 
+    /// indicates access permissions to this field.
     size_t accessFlags;
 
-    /// 
+    /// index into the constant pool table. The value at that index
+    /// must be a UTF-8 constant that represents a valid field name
     size_t nameIndex;
 
-    /// 
+    /// index into the constant pool table.The value at that index
+    /// must be a valid UTF-8 constant that represents a valid descriptor name.
     size_t descriptorIndex;
 
-    /// 
+    /// number of attributes of this field
     size_t attributesCount;
 
-    /// 
+    /// Each entry must be a variable length attribute structure.
     ATTR_INFO[] attributes;
 }
 
 /// 
 struct MethodInfo
 {
-    /// 
+    /// indicates access permissions to this method
     size_t accessFlags;
 
-    /// 
+    /// The value of the name_index item must be a valid index into the constant_pool table. 
+    /// The constant_pool entry at that index must be a CONSTANT_Utf8_info structure representing
+    /// either one of the special internal method names, either <init> or <clinit>, or a valid 
+    /// Java method name, stored as a simple (not fully qualified) name.
     size_t nameIndex;
 
-    /// 
+    /// index into the constant pool table.The value at that index
+    /// must be a valid UTF-8 constant that represents a valid method descriptor.
     size_t descriptorIndex;
 
-    /// 
+    /// number of attributes of this method
     size_t attributesCount;
 
-    /// 
+    /// Each entry must be a variable length attribute structure.
     ATTR_INFO[] attributes;
 }
