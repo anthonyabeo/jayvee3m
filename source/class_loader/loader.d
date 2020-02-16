@@ -280,14 +280,13 @@ private:
                 immutable attribute_len = this.readBE32(),
                           line_num_table_len = this.readBE16();
 
-                Tuple!(size_t, size_t)[] line_number_table;
-
+                LineNumberAttr[] line_number_table;
                 foreach(_; 0 .. line_num_table_len)
                 {
                     auto start_pc = to!size_t(this.readBE16()),
                          line_number = to!size_t(this.readBE16());
 
-                    line_number_table ~= tuple(start_pc, line_number);
+                    line_number_table ~= LineNumberAttr(start_pc, line_number);
                 }
 
                 attributes[i] = LineNumberTable(attr_name_index, attribute_len,
@@ -312,7 +311,7 @@ private:
                 this.offset += code_length;
                 const exception_tbl_len = this.readBE16();
 
-                Tuple!(size_t, size_t, size_t, size_t) exception_table;
+                ExceptionAttr[] exception_table;
                 if (exception_tbl_len > 0)
                 {
                     size_t start_pc = this.readBE16(),
@@ -320,7 +319,7 @@ private:
                            handler_pc = this.readBE16(),
                            catch_type = this.readBE16();
 
-                    exception_table = tuple(start_pc, end_pc, handler_pc, catch_type);
+                    exception_table ~= ExceptionAttr(start_pc, end_pc, handler_pc, catch_type);
                 }
 
                 const attribute_count = this.readBE16();
@@ -350,8 +349,7 @@ private:
                 immutable attribute_len = this.readBE32();
                 immutable local_var_tbl_len = this.readBE16();
 
-                auto local_var_table = new Tuple!(size_t, size_t, size_t, size_t, size_t)[local_var_tbl_len];
-
+                LocalVarAttrs[] local_var_table;
                 foreach (_; 0 .. local_var_tbl_len)
                 {
                     auto start_pc = to!size_t(this.readBE16()),
@@ -360,7 +358,7 @@ private:
                          descriptor_index = to!size_t(this.readBE16()),
                          index = to!size_t(this.readBE16());
 
-                        local_var_table ~= tuple(start_pc, length, name_index, descriptor_index, index);
+                        local_var_table ~= LocalVarAttrs(start_pc, length, name_index, descriptor_index, index);
                 }
 
                 attributes[i] = LocalVariableTable(attr_name_index, attribute_len, 

@@ -58,7 +58,7 @@ struct Code
 	size_t codeLength;					///	code length
 	ubyte[] code;						/// code
 	size_t exceptionTableLen;   		/// exception table length
-	Tuple!(ulong, ulong, ulong, ulong) exceptionTable;		/// exceptiont able
+	ExceptionAttr[] exceptionTable;		/// exceptiont able
 	size_t attributeCount;				/// number of attributes
 	ATTR_INFO[] attributes;				///	attributes
 }
@@ -84,7 +84,7 @@ struct LocalVariableTable
 	size_t attributeNameIndex;			/// attribute name index
 	size_t attributeLength;				/// attribute length
 	size_t localVarTableLen;			/// local variable table length
-	Tuple!(size_t, size_t, size_t ,size_t, size_t)[] localVariableTable;	/// local variable table
+	LocalVarAttrs[] localVariableTable;	/// local variable table
 }
 
 /**
@@ -109,7 +109,7 @@ struct LineNumberTable
 	size_t attributeNameIndex;					///  attribute name index
 	size_t attributeLength;						///  attribute length
 	size_t lineNumTableLength;					///  line number table length
-	Tuple!(ulong, ulong)[] lineNumberTable;	        ///  line number table
+	LineNumberAttr[] lineNumberTable;	        ///  line number table
 }
 
 /**
