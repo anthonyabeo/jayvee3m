@@ -18,8 +18,9 @@ void main(string[] args)
 
     auto f = File(class_file, "r");
     auto buffer = f.rawRead(new ubyte[f.size()]);
-
-    auto cf = BootstrapLoader.parseClassFile(buffer);
+    
+    auto bl = BootstrapLoader(buffer);
+    auto cf = bl.parseClassFile();
     // writeln(cf);
     auto jvm = JVM(cf, class_file);
     jvm.start();
