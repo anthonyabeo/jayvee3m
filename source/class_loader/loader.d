@@ -2,24 +2,44 @@ module class_loader.loader;
 
 import std.math, std.conv, std.typecons, std.file;
 
+import app;
+import utils;
 import constants;
 import attributes;
 import class_loader.class_file;
-import app : MethodInfo, FieldInfo;
-import utils : bigEndian16from, bigEndian32from;
 
-/// 
+
+/**
+ *
+ *
+ */
 struct BootstrapLoader
 {
-public:
-    /// 
-    static ClassFile parseClassFile(ubyte[] buffer)
+    ubyte[] input;  /// constains the binary rep of the class file
+    size_t offset;  /// position in the 
+    
+    uint constPoolCnt;    /// size of the constant pool
+    /**
+        Constructor
+
+        Params:
+            input = 
+     */
+    this(ubyte[] input) {
+        this.input = input;
+    }
+
+    /**
+     *
+     *
+     */
+    ClassFile parseClassFile(ubyte[] buffer)
     {
-        auto magic = bigEndian32from(buffer[0 .. 4]);
-        auto min_version = bigEndian16from(buffer[4 .. 6]);
-        auto maj_version = bigEndian16from(buffer[6 .. 8]);
-        auto const_pool_cnt = bigEndian16from(buffer[8 .. 10]);
-        auto const_pool = buildConstantPool(buffer, const_pool_cnt, 10);
+        auto magic = this.readBE32();
+        auto min_version = this.readBE16();
+        auto maj_version = this.readBE16();
+        this.constPoolCnt = this.readBE16();
+        auto const_pool = this.buildConstantPool();
 
         auto i = const_pool[1];
         auto access_flags = bigEndian16from(buffer[i .. i + 2]);
@@ -40,7 +60,7 @@ public:
         const attr_cnt = bigEndian16from(buffer[i .. i + 2]);
         auto attributes = buildAttributesTable(buffer, attr_cnt, i + 2, const_pool[0]);
 
-        auto cf = ClassFile(magic, min_version, maj_version, const_pool_cnt, const_pool[0], access_flags,
+        auto cf = ClassFile(magic, min_version, maj_version, this.constPoolCnt, const_pool[0], access_flags,
                 this_class, super_class, interface_cnt, interfaces[0], field_cnt,
                 fields[0], methods_cnt, methods[0], attr_cnt, attributes[0]);
 
@@ -48,68 +68,52 @@ public:
     }
 
 private:
-    static Tuple!(CP_INFO[], size_t) buildConstantPool(ubyte[] buffer, size_t pool_cnt, size_t start)
+    Tuple!(CP_INFO[], size_t) buildConstantPool()
     {
-        CP_INFO[] pool = new CP_INFO[pool_cnt];
+        CP_INFO[] pool = new CP_INFO[this.constPoolCnt];
 
-        size_t i = start, next_index = 1;
-        while (next_index < pool_cnt)
+        size_t next_index = 1;
+        while (next_index < this.constPoolCnt)
         {
-            ubyte tag = buffer[i];
+            ubyte tag = this.input[this.offset++];
             final switch (tag)
             {
             case Constant.Methodref:
-                size_t class_index = bigEndian16from(buffer[i + 1 .. i + 3]);
-                size_t name_type_index = bigEndian16from(buffer[i + 3 .. i + 5]);
+                size_t class_index = this.readBE16();
+                size_t name_type_index = this.readBE16();
 
-                pool[next_index] = CP_INFO(Method(tag, class_index, name_type_index));
-
-                next_index += 1;
-                i += 5;
+                pool[next_index++] = CP_INFO(Method(tag, class_index, name_type_index));
 
                 break;
-
             case Constant.Fieldref:
-                immutable class_index = bigEndian16from(buffer[i + 1 .. i + 3]);
-                immutable name_type_index = bigEndian16from(buffer[i + 3 .. i + 5]);
+                immutable class_index = this.readBE16();
+                immutable name_type_index = this.readBE16();
 
-                pool[next_index] = CP_INFO(Field(tag, class_index, name_type_index));
-
-                next_index += 1;
-                i += 5;
+                pool[next_index++] = CP_INFO(Field(tag, class_index, name_type_index));
 
                 break;
-
             case Constant.InterfaceMethodref:
-                immutable class_index = bigEndian16from(buffer[i + 1 .. i + 3]);
-                immutable name_type_index = bigEndian16from(buffer[i + 3 .. i + 5]);
+                immutable class_index = this.readBE16();
+                immutable name_type_index = this.readBE16();
 
-                pool[next_index] = CP_INFO(InterfaceMethod(tag, class_index, name_type_index));
-
-                next_index += 1;
-                i += 5;
+                pool[next_index++] = CP_INFO(InterfaceMethod(tag, class_index, name_type_index));
 
                 break;
-
             case Constant.Integer:
-                immutable bytes = bigEndian32from(buffer[i + 1 .. i + 5]);
-                pool[next_index] = CP_INFO(Integer(tag, bytes));
-
-                next_index += 1;
-                i += 5;
+                immutable bytes = this.readBE32();
+                pool[next_index++] = CP_INFO(Integer(tag, bytes));
 
                 break;
-
             case Constant.Float:
                 float value;
-                immutable bytes = bigEndian32from(buffer[i + 1 .. i + 5]);
+                immutable bytes = readBE32();
 
                 if (bytes == 0x7f800000)
                     value = real.infinity;
                 else if (bytes == 0xff800000)
                     value = -real.infinity;
-                else if (((bytes >= 0x7f800001) && (bytes <= 0x7fffffff))
-                        || ((bytes >= 0xff800001) && (bytes <= 0xffffffff)))
+                else if (bytes >= 0x7f800001 && bytes <= 0x7fffffff   || 
+                         bytes >= 0xff800001 && bytes <= 0xffffffff)
                 {
                     value = float.nan;
                 }
@@ -122,29 +126,23 @@ private:
                     value = s * m * (pow(to!float(2), e - 150));
                 }
 
-                pool[next_index] = CP_INFO(Float(tag, value));
-
-                next_index += 1;
-                i += 5;
+                pool[next_index++] = CP_INFO(Float(tag, value));
 
                 break;
-
             case Constant.Long:
-                immutable high_bytes = to!ulong(bigEndian32from(buffer[i + 1 .. i + 5]));
-                immutable low_bytes = to!ulong(bigEndian32from(buffer[i + 5 .. i + 9]));
+                immutable high_bytes = to!ulong(this.readBE32());
+                immutable low_bytes = to!ulong(this.readBE32());
 
                 immutable bytes = (high_bytes << 32) + low_bytes;
                 pool[next_index] = CP_INFO(Long(tag, bytes));
 
                 next_index += 2;
-                i += 9;
 
                 break;
-
             case Constant.Double:
                 double value;
-                immutable high_bytes = to!long(bigEndian32from(buffer[i + 1 .. i + 5]));
-                immutable low_bytes = to!long(bigEndian32from(buffer[i + 5 .. i + 9]));
+                immutable high_bytes = to!long(this.readBE32());
+                immutable low_bytes = to!long(this.readBE32());
 
                 immutable bytes = (high_bytes << 32) + low_bytes;
 
@@ -152,8 +150,8 @@ private:
                     value = real.infinity;
                 else if (bytes == 0xff80000000000000)
                     value = -real.infinity;
-                else if (((bytes >= 0x7ff0000000000001) && (bytes <= 0x7fffffffffffffff))
-                        || ((bytes >= 0xfff0000000000001) && (bytes <= 0xffffffffffffffff)))
+                else if (bytes >= 0x7ff0000000000001 && bytes <= 0x7fffffffffffffff || 
+                         bytes >= 0xfff0000000000001 && bytes <= 0xffffffffffffffff)
                 {
                     value = double.nan;
                 }
@@ -161,8 +159,8 @@ private:
                 {
                     immutable s = ((bytes >> 63) == 0) ? 1 : -1;
                     immutable e = to!int((bytes >> 52) & 0x7ff);
-                    immutable m = (e == 0) ? (bytes & 0xfffffffffffff) << 1 : (
-                            bytes & 0xfffffffffffff) | 0x10000000000000;
+                    immutable m = (e == 0) ? (bytes & 0xfffffffffffff) << 1 : 
+                                  (bytes & 0xfffffffffffff) | 0x10000000000000;
 
                     value = s * m * (pow(to!double(2), e - 1075));
                 }
@@ -170,55 +168,39 @@ private:
                 pool[next_index] = CP_INFO(Double(tag, value));
 
                 next_index += 2;
-                i += 9;
 
                 break;
-
             case Constant.Klass:
-                immutable name_index = bigEndian16from(buffer[i + 1 .. i + 3]);
-                pool[next_index] = CP_INFO(Class(tag, name_index));
-
-                next_index += 1;
-                i += 3;
+                immutable name_index = this.readBE16();
+                pool[next_index++] = CP_INFO(Class(tag, name_index));
 
                 break;
-
             case Constant.String:
-                immutable string_index = bigEndian16from(buffer[i + 1 .. i + 3]);
-                pool[next_index] = CP_INFO(String(tag, string_index));
-
-                next_index += 1;
-                i += 3;
+                immutable string_index = this.readBE16();
+                pool[next_index++] = CP_INFO(String(tag, string_index));
 
                 break;
-
             case Constant.NameAndType:
-                immutable name_index = bigEndian16from(buffer[i + 1 .. i + 3]);
-                immutable descriptor_index = bigEndian16from(buffer[i + 3 .. i + 5]);
+                immutable name_index = this.readBE16();
+                immutable descriptor_index = this.readBE16();
 
-                pool[next_index] = CP_INFO(NameAndType(tag, name_index, descriptor_index));
-
-                next_index += 1;
-                i += 5;
+                pool[next_index++] = CP_INFO(NameAndType(tag, name_index, descriptor_index));
 
                 break;
-
             case Constant.Utf8:
+                immutable len = this.readBE16();
+                immutable bytes = this.input[this.offset .. this.offset+len].idup;
 
-                immutable len = bigEndian16from(buffer[i + 1 .. i + 3]);
-                immutable bytes = buffer[i + 3 .. i + 3 + len].idup;
+                pool[next_index++] = CP_INFO(UTF8(tag, len, bytes));
 
-                pool[next_index] = CP_INFO(UTF8(tag, len, bytes));
-
-                next_index += 1;
-                i += (len + 3);
+                this.offset += len;
 
                 break;
             }
         }
 
-        pool = pool[0 .. pool_cnt];
-        return Tuple!(CP_INFO[], "const_pool", size_t, "start")(pool, i);
+        // pool = pool[0 .. pool_cnt];
+        return Tuple!(CP_INFO[], "const_pool", size_t, "start")(pool, this.offset);
     }
 
     static Tuple!(size_t[], size_t) buildInterfacesTable(ubyte[] buffer,
@@ -400,5 +382,47 @@ private:
         }
 
         return Tuple!(ATTR_INFO[], size_t)(attributes, start);
+    }
+
+    /**
+	Generate a numerical value from an array of four bytes
+	in a big-endian format.
+
+	Params:
+		data = an immutable array of bytes of size 4 in big endian format;
+
+	Returns:
+		the numerical value of this array representation.
+    */
+    auto readBE32() 
+    {
+        auto value =  this.input[this.offset]   << 24 |
+                      this.input[this.offset+1] << 16 |
+                      this.input[this.offset+2] << 8  |
+                      this.input[this.offset+3];
+
+        this.offset += 4;
+
+        return value;
+    }
+
+    /**
+	Generate the 16-bit numerical value from an array of two bytes
+	in a big-endian format.
+
+	Params:
+		data = an immutable array of bytes of size 2 in big endian format;
+
+	Returns:
+		the 16-bit numerical value of this array representation.
+    */
+    auto readBE16() 
+    {
+        auto value =  this.input[this.offset] << 8  | 
+                      this.input[this.offset+1];
+        
+        this.offset += 2;
+
+        return value;
     }
 }
