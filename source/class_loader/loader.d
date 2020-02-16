@@ -19,6 +19,13 @@ struct BootstrapLoader
     size_t offset;  /// position in the 
     
     uint constPoolCnt;    /// size of the constant pool
+    uint interfaceCnt;    /// number of interfaces
+    uint fieldCnt;        /// number of fields
+    uint attrCnt;       /// number of attributes
+    uint methodCnt;     /// number of methods
+
+    CP_INFO[] constPool;    /// constant pool
+
     /**
         Constructor
 
@@ -33,42 +40,42 @@ struct BootstrapLoader
      *
      *
      */
-    ClassFile parseClassFile(ubyte[] buffer)
+    ClassFile parseClassFile()
     {
         auto magic = this.readBE32();
         auto min_version = this.readBE16();
         auto maj_version = this.readBE16();
+
         this.constPoolCnt = this.readBE16();
-        auto const_pool = this.buildConstantPool();
+        this.constPool = this.buildConstantPool();
 
-        auto i = const_pool[1];
-        auto access_flags = bigEndian16from(buffer[i .. i + 2]);
-        auto this_class = bigEndian16from(buffer[i + 2 .. i + 4]);
-        auto super_class = bigEndian16from(buffer[i + 4 .. i + 6]);
-        auto interface_cnt = bigEndian16from(buffer[i + 6 .. i + 8]);
-        auto interfaces = buildInterfacesTable(buffer, interface_cnt, i + 8);
+        auto access_flags = this.readBE16();
+        auto this_class = this.readBE16();
+        auto super_class = this.readBE16();
 
-        i = interfaces[1];
-        auto field_cnt = bigEndian16from(buffer[i .. i + 2]);
-        auto fields = buildFieldsTable(buffer, field_cnt, i + 2, const_pool[0]);
+        auto interface_cnt = this.readBE16();
+        auto interfaces = this.buildInterfacesTable();
 
-        i = fields[1];
-        const methods_cnt = bigEndian16from(buffer[i .. i + 2]);
-        auto methods = build_method_table(buffer, methods_cnt, i + 2, const_pool[0]);
+        this.fieldCnt = readBE16();
+        auto fields = this.buildFieldsTable();
 
-        i = methods[1];
-        const attr_cnt = bigEndian16from(buffer[i .. i + 2]);
-        auto attributes = buildAttributesTable(buffer, attr_cnt, i + 2, const_pool[0]);
+        this.methodCnt = this.readBE16();
+        auto methods = this.buildMethodTable();
 
-        auto cf = ClassFile(magic, min_version, maj_version, this.constPoolCnt, const_pool[0], access_flags,
-                this_class, super_class, interface_cnt, interfaces[0], field_cnt,
-                fields[0], methods_cnt, methods[0], attr_cnt, attributes[0]);
+        this.attrCnt = this.readBE16();
+        auto attributes = buildAttributesTable();
+
+        auto cf = ClassFile(
+            magic, min_version, maj_version, this.constPoolCnt, this.constPool, 
+            access_flags, this_class, super_class, interface_cnt, interfaces, 
+            this.fieldCnt, fields, this.methodCnt, methods, this.attrCnt, attributes
+        );
 
         return cf;
     }
 
 private:
-    Tuple!(CP_INFO[], size_t) buildConstantPool()
+    CP_INFO[] buildConstantPool()
     {
         CP_INFO[] pool = new CP_INFO[this.constPoolCnt];
 
@@ -199,189 +206,169 @@ private:
             }
         }
 
-        // pool = pool[0 .. pool_cnt];
-        return Tuple!(CP_INFO[], "const_pool", size_t, "start")(pool, this.offset);
+        return pool;
     }
 
-    static Tuple!(size_t[], size_t) buildInterfacesTable(ubyte[] buffer,
-            size_t interface_cnt, size_t start)
+    size_t[] buildInterfacesTable()
     {
-        size_t[] interfaces; //= new size_t[interface_cnt];
-        size_t i = 0;
-        while (i < interface_cnt)
+        size_t[] interfaces;
+        foreach(_; 0..this.interfaceCnt)
         {
-            interfaces ~= bigEndian16from(buffer[start .. start + 2]);
-            start += 2;
-            i += 1;
+            interfaces ~= readBE16();
         }
 
-        return Tuple!(size_t[], size_t)(interfaces, start);
+        return interfaces;
     }
 
-    static Tuple!(FieldInfo[], size_t) buildFieldsTable(ubyte[] buffer,
-            size_t field_cnt, size_t start, CP_INFO[] pool)
+    FieldInfo[] buildFieldsTable()
     {
-        FieldInfo[] fields; //= new FieldInfo[field_cnt];
+        FieldInfo[] fields;
 
-        for (size_t i = 0; i < field_cnt; i++)
+        foreach(_; 0..this.fieldCnt)
         {
-            auto access_flags = bigEndian16from(buffer[start .. start + 2]);
-            auto name_index = bigEndian16from(buffer[start + 2 .. start + 4]);
-            auto descriptor_index = bigEndian16from(buffer[start + 4 .. start + 6]);
-            auto attributes_count = bigEndian16from(buffer[start + 6 .. start + 8]);
-            auto attributes = buildAttributesTable(buffer, attributes_count, start + 8, pool);
+            auto access_flags = this.readBE16();
+            auto name_index = this.readBE16();
+            auto descriptor_index = this.readBE16();
+
+            this.attrCnt = this.readBE16();
+            auto attributes = this.buildAttributesTable();
 
             fields ~= FieldInfo(access_flags, name_index, descriptor_index,
-                    attributes_count, attributes[0]);
-            start += attributes[1];
+                                this.attrCnt, attributes);
         }
 
-        return Tuple!(FieldInfo[], size_t)(fields, start);
+        return fields;
     }
 
-    static Tuple!(MethodInfo[], size_t) build_method_table(ubyte[] buffer,
-            size_t method_cnt, size_t start, CP_INFO[] pool)
+    MethodInfo[] buildMethodTable()
     {
         MethodInfo[] methods;
-        for (size_t i = 0; i < method_cnt; i++)
+        foreach (_; 0..this.methodCnt)
         {
-            auto access_flags = bigEndian16from(buffer[start .. start + 2]),
-                name_index = bigEndian16from(buffer[start + 2 .. start + 4]),
-                descriptor_index = bigEndian16from(buffer[start + 4 .. start + 6]),
-                attributes_count = bigEndian16from(buffer[start + 6 .. start + 8]),
-                attributes = buildAttributesTable(buffer, attributes_count, start + 8, pool);
+            auto access_flags = this.readBE16(),
+                 name_index = this.readBE16(),
+                 descriptor_index = this.readBE16();
+
+            this.attrCnt = this.readBE16();
+            auto attributes = this.buildAttributesTable();
 
             methods ~= MethodInfo(access_flags, name_index, descriptor_index,
-                    attributes_count, attributes[0]);
-            start = attributes[1];
+                                  this.attrCnt, attributes);
         }
 
-        return Tuple!(MethodInfo[], size_t)(methods, start);
+        return methods;
     }
 
-    static Tuple!(ATTR_INFO[], size_t) buildAttributesTable(ubyte[] buffer,
-            size_t attr_cnt, size_t start, CP_INFO[] pool)
+    ATTR_INFO[] buildAttributesTable()
     {
-        ATTR_INFO[] attributes = new ATTR_INFO[attr_cnt];
+        ATTR_INFO[] attributes = new ATTR_INFO[this.attrCnt];
 
-        for (size_t i = 0; i < attr_cnt; i++)
+        for (size_t i = 0; i < this.attrCnt; i++)
         {
-            size_t attr_name_index = bigEndian16from(buffer[start .. start + 2]);
-            immutable cnstnt = *pool[attr_name_index].peek!(UTF8);
+            size_t attr_name_index = this.readBE16();
+            immutable cnstnt = *this.constPool[attr_name_index].peek!(UTF8);
 
             if (cnstnt.value == cast(ubyte[]) "SourceFile")
             {
-                immutable attribute_len = bigEndian32from(buffer[start + 2 .. start + 6]),
-                    sourcefile_index = bigEndian16from(buffer[start + 6 .. start + 8]);
+                immutable attribute_len = this.readBE32(),
+                          sourcefile_index = this.readBE16();
 
                 attributes[i] = SourceFile(attr_name_index, attribute_len, sourcefile_index);
-
-                start += 8;
             }
             else if (cnstnt.value == cast(ubyte[]) "LineNumberTable")
             {
-                immutable attribute_len = bigEndian32from(buffer[start + 2 .. start + 6]),
-                    line_num_table_len = bigEndian16from(buffer[start + 6 .. start + 8]);
+                immutable attribute_len = this.readBE32(),
+                          line_num_table_len = this.readBE16();
 
                 Tuple!(size_t, size_t)[] line_number_table;
 
-                start += 8;
-                for (size_t j = 0; j < line_num_table_len; j++)
+                foreach(_; 0 .. line_num_table_len)
                 {
-                    auto start_pc = to!size_t(bigEndian16from(buffer[start .. start + 2])),
-                        line_number = to!size_t(bigEndian16from(buffer[start + 2 .. start + 4]));
+                    auto start_pc = to!size_t(this.readBE16()),
+                         line_number = to!size_t(this.readBE16());
 
                     line_number_table ~= tuple(start_pc, line_number);
-                    start += 4;
                 }
 
                 attributes[i] = LineNumberTable(attr_name_index, attribute_len,
-                        line_num_table_len, line_number_table);
+                                                line_num_table_len, line_number_table);
             }
             else if (cnstnt.value == cast(ubyte[]) "ConstantValue")
             {
-                const attribute_len = bigEndian32from(buffer[start + 2 .. start + 6]),
-                    constantvalue_index = bigEndian16from(buffer[start + 6 .. start + 8]);
+                const attribute_len = this.readBE32(),
+                      constantvalue_index = this.readBE16();
 
                 attributes[i] = ConstantValue(attr_name_index, attribute_len, constantvalue_index);
-                start += 8;
             }
             else if (cnstnt.value == cast(ubyte[]) "Code")
             {
-                const attribute_len = bigEndian32from(buffer[start + 2 .. start + 6]),
-                    max_stack = bigEndian16from(buffer[start + 6 .. start + 8]),
-                    max_locals = bigEndian16from(buffer[start + 8 .. start + 10]),
-                    code_length = bigEndian32from(buffer[start + 10 .. start + 14]);
-                ubyte[] code = buffer[start + 14 .. start + 14 + code_length];
+                const attribute_len = this.readBE32(),
+                      max_stack = this.readBE16(),
+                      max_locals = this.readBE16(),
+                     code_length = this.readBE32();
 
-                start += (code_length + 14);
-                const exception_tbl_len = bigEndian16from(buffer[start .. start + 2]);
+                ubyte[] code = this.input[this.offset.. this.offset+code_length];
 
-                start += 2;
+                this.offset += code_length;
+                const exception_tbl_len = this.readBE16();
+
                 Tuple!(size_t, size_t, size_t, size_t) exception_table;
                 if (exception_tbl_len > 0)
                 {
-                    size_t start_pc = bigEndian16from(buffer[start .. start + 2]),
-                        end_pc = bigEndian16from(buffer[start + 2 .. start + 4]),
-                        handler_pc = bigEndian16from(buffer[start + 4 .. start + 6]),
-                        catch_type = bigEndian16from(buffer[start + 6 .. start + 8]);
+                    size_t start_pc = this.readBE16(),
+                           end_pc = this.readBE16(),
+                           handler_pc = this.readBE16(),
+                           catch_type = this.readBE16();
 
                     exception_table = tuple(start_pc, end_pc, handler_pc, catch_type);
-                    start += 8;
                 }
 
-                const attribute_count = bigEndian16from(buffer[start .. start + 2]);
-                auto attrbt = buildAttributesTable(buffer, attribute_count, start + 2, pool);
+                const attribute_count = this.readBE16();
+                auto attrbt = this.buildAttributesTable();
 
                 const ATTR_INFO a = Code(attr_name_index, attribute_len, max_stack, max_locals, code_length, code,
-                        exception_tbl_len, exception_table, attribute_count, attrbt[0]);
+                        exception_tbl_len, exception_table, attribute_count, attrbt);
 
                 attributes[i] = a;
-                start = attrbt[1];
             }
             else if (cnstnt.value == cast(ubyte[]) "Exception")
             {
-                immutable attribute_len = bigEndian32from(buffer[start + 2 .. start + 6]),
-                    num_exceptions = bigEndian16from(buffer[start + 6 .. start + 8]);
+                immutable attribute_len = this.readBE32(),
+                          num_exceptions = this.readBE16();
 
                 auto exception_index_table = new size_t[num_exceptions];
-                start += 8;
-                for (size_t j = 0; j < num_exceptions; j++)
+                foreach (_; 0..num_exceptions)
                 {
-                    exception_index_table ~= bigEndian16from(buffer[start .. start + 2]);
-                    start += 2;
+                    exception_index_table ~= this.readBE16();
                 }
 
                 attributes[i] = Excepsion(attr_name_index, attribute_len,
-                        num_exceptions, exception_index_table);
+                                          num_exceptions, exception_index_table);
             }
             else if (cnstnt.value == cast(ubyte[]) "LocalVariableTable")
             {
-                immutable attribute_len = bigEndian32from(buffer[start + 2 .. start + 6]);
-                immutable local_var_tbl_len = bigEndian16from(buffer[start + 6 .. start + 8]);
+                immutable attribute_len = this.readBE32();
+                immutable local_var_tbl_len = this.readBE16();
 
-                start += 8;
                 auto local_var_table = new Tuple!(size_t, size_t, size_t, size_t, size_t)[local_var_tbl_len];
 
-                auto start_pc = to!size_t(bigEndian16from(buffer[start .. start + 2])),
-                    length = to!size_t(bigEndian16from(buffer[start + 2 .. start + 4])),
-                    name_index = to!size_t(bigEndian16from(buffer[start + 4 .. start + 6])),
-                    descriptor_index = to!size_t(bigEndian16from(buffer[start + 6 .. start + 8])),
-                    index = to!size_t(bigEndian16from(buffer[start + 8 .. start + 10]));
-
-                for (size_t j = 0; j < local_var_tbl_len; j++)
+                foreach (_; 0 .. local_var_tbl_len)
                 {
-                    local_var_table ~= tuple(start_pc, length, name_index,
-                            descriptor_index, index);
-                    start += 10;
+                    auto start_pc = to!size_t(this.readBE16()),
+                         length = to!size_t(this.readBE16()),
+                         name_index = to!size_t(this.readBE16()),
+                         descriptor_index = to!size_t(this.readBE16()),
+                         index = to!size_t(this.readBE16());
+
+                        local_var_table ~= tuple(start_pc, length, name_index, descriptor_index, index);
                 }
 
-                attributes[i] = LocalVariableTable(attr_name_index,
-                        attribute_len, local_var_tbl_len, local_var_table);
+                attributes[i] = LocalVariableTable(attr_name_index, attribute_len, 
+                                                   local_var_tbl_len, local_var_table);
             }
         }
 
-        return Tuple!(ATTR_INFO[], size_t)(attributes, start);
+        return attributes;
     }
 
     /**
